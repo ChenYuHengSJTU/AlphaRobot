@@ -11,10 +11,40 @@ from grid_map_env.classes.robot_state import RobotState
 from grid_map_env.classes.action import Action
 from grid_map_env.utils import sample_start_and_goal
 
+# from replay import render
+
 
 def play_with_keyboard(map_file_path, start_pos=None, goal_pos=None, store=False, store_path="~/",step_limit=1000):
     """
     Control the robot to complete a navigation task by keyboard.
+    - w: perform acceleration by 1.
+    - s: perform deceleration by 1.
+    - a: perform a left turn.
+    - d: perform a right turn.
+    - space: remain in the direction and retain the speed
+
+    Parameters:
+        map_file_path (str): The file path to the original text file storing the map.
+        start_pos (tuple) and goal_pos (tuple): The start position (row, col) and goal position (row, col).
+            If one of them is None, both will be replaced by randomly sampled positions.
+        store (bool): Whether to store data. If True, data will be saved as a JSON file, including:
+            - map_file_path (str): The file path to the original text file storing the map.
+            - start_pos (tuple): The start position (row, col).
+            - goal_pos (tuple): The goal position (row, col).
+            - robot_rows (list): List of row indices of the robot's position for each state.
+            - robot_cols (list): List of column indices of the robot's position for each state.
+            - robot_speeds (list): List of robot's speed for each state.
+            - robot_directions (list): List of robot's direction for each state.
+            - action_accs (list): List of accelerations for each action. Note that the number of actions is one less than the number of states.
+            - action_rots (list): List of rotations for each action.
+            - steps (int): Total number of time steps.
+            - is_goal (bool): Whether the robot has reached the goal.
+        store_path (str): The file path to store the data (if store is True).
+        step_limit (int): The maximum number of steps allowed. None means no step limit.
+
+    Returns:
+        is_goal (bool): Whether the robot has reached the goal.
+        steps (int): Total number of time steps.
     """
     if start_pos == None or goal_pos == None:
         start_pos, goal_pos = sample_start_and_goal(map_file_path)
@@ -33,7 +63,7 @@ def play_with_keyboard(map_file_path, start_pos=None, goal_pos=None, store=False
 
     robot_state = RobotState(row=initial_observation["robot_pos"][0], col=initial_observation["robot_pos"]
                              [1], speed=initial_observation["robot_speed"], direction=initial_observation["robot_direction"])
-    #print(robot_state.row,robot_state.col,robot_state.speed,robot_state.direction)
+    # print(robot.row,robot.col,robot.speed,robot.direction)
 
     current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -90,7 +120,6 @@ def play_with_keyboard(map_file_path, start_pos=None, goal_pos=None, store=False
         robot_state.col = observation["robot_pos"][1]
         robot_state.speed = observation["robot_speed"]
         robot_state.direction = observation["robot_direction"]
-        print(robot_state.row,robot_state.col,robot_state.speed,robot_state.direction)
 
         if store:
             robot_rows.append(int(robot_state.row))

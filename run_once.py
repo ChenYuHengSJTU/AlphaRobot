@@ -8,11 +8,37 @@ import json
 import gym
 import warnings
 
-MAP_NAME="Wiconisco" # Collierville, Corozal, Ihlen, Markleeville, or Wiconisco
+MAP_NAME="winconisco"
 
 def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, store_path="~/", step_limit=1000, time_limit=1.0, headless=False):
     """
     Run a navigation task once.
+
+    Parameters:
+        map_file_path (str): The file path to the original text file storing the map.
+        policy (Policy): An instance of your policy class.
+        start_pos (tuple) and goal_pos (tuple): The start position (row, col) and goal position (row, col).
+            If one of them is None, both will be replaced by randomly sampled positions.
+        store (bool): Whether to store data. If True, data will be saved as a JSON file, including:
+            - map_file_path (str): The file path to the original text file storing the map.
+            - start_pos (tuple): The start position (row, col).
+            - goal_pos (tuple): The goal position (row, col).
+            - robot_rows (list): List of row indices of the robot's position for each state.
+            - robot_cols (list): List of column indices of the robot's position for each state.
+            - robot_speeds (list): List of robot's speed for each state.
+            - robot_directions (list): List of robot's direction for each state.
+            - action_accs (list): List of accelerations for each action. Note that the number of actions is one less than the number of states.
+            - action_rots (list): List of rotations for each action.
+            - steps (int): Total number of time steps.
+            - is_goal (bool): Whether the robot has reached the goal.
+        store_path (str): The file path to store the data (if store is True).
+        step_limit (int): The maximum number of steps allowed. None means no step limit.
+        time_limit (float): The maximum thinking time in seconds for each step.
+        headless (bool): Whether to run in headless mode without visualization.
+
+    Returns:
+        is_goal (bool): Whether the robot has reached the goal.
+        steps (int): Total number of time steps.
     """
 
     if start_pos == None or goal_pos == None:
@@ -20,21 +46,16 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
 
     warnings.filterwarnings("ignore", category=UserWarning, module="gym")
 
-    env = gym.make("grid_map_env/GridMapEnv-v0", # name of the registered Gym environment of the GridMapEnvCompile class
-                   n=100, # load an 100*100 map
-                   map_file_path=map_file_path, # location of the map file
-                   start_pos=start_pos, # start
-                   goal_pos=goal_pos, # goal
-                   headless=headless #whether to use rendering
-                   )
+    env = gym.make("grid_map_env/GridMapEnv-v0", n=100,
+                   map_file_path=map_file_path, start_pos=start_pos, goal_pos=goal_pos, headless=headless)
 
-    initial_observation, _ = env.reset() # Reset the environment
+    initial_observation, _ = env.reset()
 
-    map = initial_observation["map"] # retrieve the map from the state dictionary
+    map = initial_observation["map"]
 
-    #construct the initial robot state
     robot_state = RobotState(row=initial_observation["robot_pos"][0], col=initial_observation["robot_pos"]
                              [1], speed=initial_observation["robot_speed"], direction=initial_observation["robot_direction"])
+    # print(robot.row,robot.col,robot.speed,robot.direction)
 
     current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -52,9 +73,6 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
     action_accs = []
     action_rots = []
 
-    episode_length = 0
-
-
     if store:
         if not os.path.exists(store_path):
             os.makedirs(store_path)
@@ -67,7 +85,6 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
         robot_directions.append(int(robot_state.direction))
 
     for _ in range(step_limit):
-        # run your policy
         result_list = []
         thread = threading.Thread(target=lambda: result_list.append(
             policy.get_action(map, robot_state)))
@@ -78,12 +95,9 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
             # thread.terminate()
             print("excution time larger than 1s")
             terminated = True
-            is_goal = False
-            break
 
         action = result_list[0]
 
-        # update the robot state by observation
         observation, curr_steps, terminated, is_goal, _ = env.step(action)
         robot_state.row = observation["robot_pos"][0]
         robot_state.col = observation["robot_pos"][1]
@@ -98,14 +112,14 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
             action_accs.append(int(action.acc))
             action_rots.append(int(action.rot))
 
-        if terminated: # stop when the task is finished
+        if terminated:
             episode_length = curr_steps
             print("finish!")
             print("total step number: ", episode_length)
             env.close()
             break
         if not headless:
-            env.render() # render the environment
+            env.render()
         
     if store:
         json_dict["robot_rows"] = robot_rows
@@ -126,19 +140,15 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
 if __name__ == "__main__":
 
 
-    # an example for how to run a navigation task for one time and store the data
-    
-    #prepare map file name
+    # and example for how to run a navigation task for one time and store the data
+
     current_directory = os.path.dirname(__file__)
     map_file_path = os.path.join(current_directory, "grid_maps",MAP_NAME,"occ_grid_small.txt")
 
-    # path for storing data
     store_path = os.path.join(current_directory, "replay_data")
 
-    # prepare the policy
     policy = Policy()
 
-    #run an episode with randomly sampled start and goal, and store the data
     run_once(map_file_path=map_file_path,
              policy=policy,
              store=True,

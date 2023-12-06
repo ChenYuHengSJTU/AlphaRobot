@@ -3,9 +3,8 @@ from policy import Policy
 
 from run_once import run_once
 
-TASK_NUM = 300 # number of tasks to run
-MAP_NAME = 'Ihlen' # Collierville, Corozal, Ihlen, Markleeville, or Wiconisco
-
+TASK_NUM = 10
+MAP_NAME = 'Wiconisco'
 if __name__ == "__main__":
 
     # and example for how to run TASK_NUM tasks in one map in headless mode and store the data
@@ -16,12 +15,11 @@ if __name__ == "__main__":
 
     store_path = os.path.join(current_directory, "replay_data")
 
+    policy = Policy()
     for i in range(TASK_NUM):
-        policy = Policy()
-
         print("run task", i+1)
         run_once(map_file_path=map_file_path,
                  policy=policy,
                  store=True,
                  store_path=store_path,
-                 headless=False)
+                 headless=True)
