@@ -476,8 +476,8 @@ class Policy:
         if DEBUG and self.simul_step_count!=0:
             err_rate=self.simul_err_count/self.simul_step_count
             print(f"[err rate]: one round err rate:{err_rate}")
-            with open("err rate.txt","a") as f:
-                f.write(f"{err_rate}\n")
+            # with open("err rate.txt","a") as f:
+            #     f.write(f"{err_rate}\n")
 
     def bounce(self,house_map,robot_state:RobotState)->Action:
         """

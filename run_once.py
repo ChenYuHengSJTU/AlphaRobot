@@ -8,7 +8,7 @@ import json
 import gym
 import warnings
 
-MAP_NAME="winconisco"
+MAP_NAME="Wiconisco"
 
 def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, store_path="~/", step_limit=1000, time_limit=1.0, headless=False):
     """
