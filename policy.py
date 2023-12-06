@@ -17,7 +17,6 @@ DEBUG=True
 
 #### seting the time restriction in computation, None for unlimited
 ## A*'s is under 2 limitation(A_TIME_LIMIT is preferred, although it limit actual time, not cpu time)
-A_POP_LIMIT=None    #A* pop action limit
 A_TIME_LIMIT=1      #A* time action limit
 
 
@@ -148,7 +147,54 @@ def compare_state_RS(rs_1:RobotState,rs_2:RobotState)->bool:
     """
     return rs_1.row==rs_2.row and rs_1.col==rs_2.col and rs_1.direction==rs_2.direction and rs_1.speed==rs_2.speed
 
-    
+
+def get_Action_from_policy(robot_state:RobotState,condition:(int,int,int,int),policy_source:dict)->Action:
+    """
+    从policy_source中获得Action, 如果未定义, 返回None
+    Argv:
+        robot_state(RobotState):
+        condition(int,int,int,int): (row,col,direction,speed)
+    Return:
+        Action
+    """
+    rlt=policy_source.get(condition,-404)
+    if rlt==-404:
+        return None
+    if rlt>=10:
+        #turn
+        rlt-=10+robot_state.direction
+        if rlt>=2:
+            rlt=-1
+        if rlt<=-2:
+            rlt=1
+        return Action(0,rlt)
+    else:
+        #speed
+        return Action(rlt,0)
+
+def simulate_RS(house_map,robot_state:RobotState,action:Action)->RobotState:
+    """
+    用于模拟运行(无噪声), 由self.check_err_rate()调用
+    """
+    row_offset,col_offset=DIR_OFFSET[robot_state.direction]
+    speed=robot_state.speed+action.acc
+    if speed>3:
+        speed=3
+    if speed<0:
+        speed=0
+    new_pos=new_row,new_col=(robot_state.row+row_offset*speed,robot_state.col+col_offset*speed)
+
+    new_dir=(robot_state.direction+action.rot)%4
+
+    if Space_check(house_map,new_pos):
+        return RobotState(new_row,new_col,new_dir,speed)
+    else:
+        dist=distance_check_RS(house_map,robot_state)
+        steps=dist-speed+1
+        new_row,new_col=(robot_state.row+row_offset*steps,robot_state.col+col_offset*steps)
+        print("\t[simulate]: bounce")
+        return RobotState(new_row,new_col,new_dir,0)
+
         
 
 ####### pre-defined class
@@ -172,9 +218,7 @@ class timer:
         return self.time_limit-(time.perf_counter()-self.start_time)
     
     
-
-
-###############
+#######################################################################################################################################
 #   algorithm
 class A_star:
     def __init__(self,target=None) -> None:
@@ -190,6 +234,7 @@ class A_star:
         #               -404: 默认，代表未定义该状态
         # **请使用rlt=self.policy.get(condition,-404)，将默认返回设置为-404**
         self.cost=dict()
+        self.pop_limit=None
 
         self.rout=None        #A*，用于存储self.A_Star_path_calculate()计算得到的路径的转弯节点
                                 #编码为 (row,cow,direction)
@@ -199,6 +244,8 @@ class A_star:
         self.start_condition=None     #A*，记录本轮A*初始化的出发
         self.timer=timer(A_TIME_LIMIT)    #A*，用于检测限定时间是否用尽
         self.best_cost=-1             #A*，记录找到最优路径在无干扰情况下最少的步数
+
+        self.start_indirect=False
     
     def Heuristic(self,position,direction:int=None)->int:
         """
@@ -252,12 +299,17 @@ class A_star:
         h_1=self.Heuristic(pos,d_1)
         h_2=self.Heuristic(pos,d_2)
         h_3=self.Heuristic(pos,d_3)
-        heapq.heappush(self.lib,(0+h_0,h_0,robot_state.row,robot_state.col,d_0,0,condition))
-        heapq.heappush(self.lib,(1+h_1,h_1,robot_state.row,robot_state.col,d_1,1,condition))
-        heapq.heappush(self.lib,(1+h_2,h_2,robot_state.row,robot_state.col,d_2,1,condition))
-        heapq.heappush(self.lib,(2+h_3,h_3,robot_state.row,robot_state.col,d_3,2,condition))
+        if self.start_indirect:
+            heapq.heappush(self.lib,(0+h_0,h_0,robot_state.row,robot_state.col,d_0,0,condition))
+            heapq.heappush(self.lib,(0+h_1,h_1,robot_state.row,robot_state.col,d_1,0,condition))
+            heapq.heappush(self.lib,(0+h_2,h_2,robot_state.row,robot_state.col,d_2,0,condition))
+            heapq.heappush(self.lib,(0+h_3,h_3,robot_state.row,robot_state.col,d_3,0,condition))
+        else:
+            heapq.heappush(self.lib,(0+h_0,h_0,robot_state.row,robot_state.col,d_0,0,condition))
+            heapq.heappush(self.lib,(1+h_1,h_1,robot_state.row,robot_state.col,d_1,1,condition))
+            heapq.heappush(self.lib,(1+h_2,h_2,robot_state.row,robot_state.col,d_2,1,condition))
+            heapq.heappush(self.lib,(2+h_3,h_3,robot_state.row,robot_state.col,d_3,2,condition))
      
-
     def A_Star_path_calculate(self,house_map)->None:
         """
         a caluculation function for A*, can halt with time limit
@@ -280,7 +332,7 @@ class A_star:
             self.cost[crr_condition]=crr[5]
 
             #确认是否超过pop上限
-            if A_POP_LIMIT and process_count>A_POP_LIMIT:
+            if self.pop_limit and process_count>self.pop_limit:
                 self.full_path=False
                 rout.append(self.target)
                 rout.append(crr[6])
@@ -303,7 +355,7 @@ class A_star:
             #如果找到目标
             if (crr[2],crr[3])==self.target:
                 self.full_path=True
-                rout.append(self.target)
+                rout.append((crr[2],crr[3],crr[4]))
                 rout.append(crr[6])
                 self.best_cost=crr[5]
                 if DEBUG:
@@ -360,7 +412,7 @@ class A_star:
             for dir in range(4):
                 if dir==desired_direction:
                     continue
-                condition=node[0],node[1],0,dir
+                condition=node[0],node[1],dir,0
                 #对于出发点，对全部方向，速度为0，设置为需要的方向
                 self.policy[condition]=desired_direction+10
 
@@ -374,10 +426,35 @@ class A_star:
                     if j==totallen and v==0:
                         #跳过终点速度为0
                         continue
-                    condition=row,col,v,desired_direction
+                    condition=row,col,desired_direction,v
                     #对路径上的所有点，朝向正确的方向，计算加减速操作
                     self.policy[condition]=acc_dacc(v,rest)
       
+class A_star_expect:
+    def __init__(self,target) -> None:
+        self.A=A_star(target)
+        self.A_reverse=A_star()
+        self.A_reverse.start_indirect=True
+
+        self.policy=dict()
+
+        self.start=None
+        self.target=target
+
+    def Policy_generation(self,house_map,robot_state:RobotState)->None:
+        self.A.A_Star_path_init(robot_state)
+        self.A.A_Star_path_calculate(house_map)
+        self.start=(robot_state.row,robot_state.col)
+
+        self.A_reverse.target=(robot_state.row,robot_state.col)
+        self.A_reverse.A_Star_path_init(RobotState(self.target[0],self.target[1]))
+        
+        
+
+    
+    
+    
+
 
 
     
@@ -412,7 +489,7 @@ class Policy:
 
 
         new_pos=(robot_state.row+row_offset*robot_state.speed,robot_state.col+col_offset*robot_state.speed)
-        if not self.Space_check(house_map,new_pos):
+        if not Space_check(house_map,new_pos):
             print("[collision]: brace for impact")
             return Action(0,0)
 
@@ -429,31 +506,6 @@ class Policy:
             else:
                 return Action(0,0)
        
-
-    def simulate_RS(self,house_map,robot_state:RobotState,action:Action)->RobotState:
-        """
-        用于模拟运行(无噪声), 由self.check_err_rate()调用
-        """
-        row_offset,col_offset=DIR_OFFSET[robot_state.direction]
-        speed=robot_state.speed+action.acc
-        if speed>3:
-            speed=3
-        if speed<0:
-            speed=0
-        new_pos=new_row,new_col=(robot_state.row+row_offset*speed,robot_state.col+col_offset*speed)
-
-        new_dir=(robot_state.direction+action.rot)%4
-
-        if Space_check(house_map,new_pos):
-            return RobotState(new_row,new_col,new_dir,speed)
-        else:
-            dist=distance_check_RS(house_map,robot_state)
-            steps=dist-speed+1
-            new_row,new_col=(robot_state.row+row_offset*steps,robot_state.col+col_offset*steps)
-            print("\t[simulate]: bounce")
-            return RobotState(new_row,new_col,new_dir,0)
-        
-
     def check_err_rate(self,house_map,robot_state:RobotState,ag)->Action:
         """
         封装函数, 用于确定err rate
@@ -466,7 +518,7 @@ class Policy:
                 print(f"\t[err rate]: expect({self.simul_expected.row},{self.simul_expected.col}:{self.simul_expected.direction}:{self.simul_expected.speed}); got ({robot_state.row},{robot_state.col}:{robot_state.direction}:{robot_state.speed})")
         rlt=ag(house_map,robot_state)
         self.simul_step_count+=1
-        self.simul_expected=self.simulate_RS(house_map,robot_state,rlt)
+        self.simul_expected=simulate_RS(house_map,robot_state,rlt)
         return rlt
   
     def Calibrate_target(self,house_map)->None:
@@ -481,34 +533,6 @@ class Policy:
                     self.target=(i,j)
                     return
     
-
-    def get_Action_from_policy(self,robot_state:RobotState,condition:(int,int,int,int),policy_source:dict)->Action:
-        """
-        从policy_source中获得Action, 如果未定义, 返回None
-
-        Argv:
-            robot_state(RobotState):
-
-            condition(int,int,int,int): (row,col,direction,speed)
-        Return:
-            Action
-        """
-        rlt=policy_source.get(condition,-404)
-        if rlt==-404:
-            return None
-        if rlt>=10:
-            #turn
-            rlt-=10+robot_state.direction
-            if rlt>=2:
-                rlt=-1
-            if rlt<=-2:
-                rlt=1
-            return Action(0,rlt)
-        else:
-            #speed
-            return Action(rlt,0)
-
-    
     def A_Star_entry(self,house_map,robot_state:RobotState)->Action:
         """
         general entry of A*
@@ -521,8 +545,8 @@ class Policy:
             self.A_Star.Policy_generation()
 
         #查询当前状态的policy
-        condition=robot_state.row,robot_state.col,robot_state.speed,robot_state.direction
-        act=self.get_Action_from_policy(robot_state,condition,self.A_Star.policy)
+        condition=robot_state.row,robot_state.col,robot_state.direction,robot_state.speed
+        act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
 
         #如果没有找到
         if act==None:
@@ -533,13 +557,11 @@ class Policy:
             self.A_Star.A_Star_path_init(robot_state)
             self.A_Star.A_Star_path_calculate(house_map)
             self.A_Star.Policy_generation()
-            act=self.get_Action_from_policy(robot_state,condition,self.A_Star.policy)
+            return Action(-1,0)
+            act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
             
         #正常情况，直接返回act（不是None）
         return act
-        
-
-
         
 
     def Expect_max(self,house_map,robot_state):
