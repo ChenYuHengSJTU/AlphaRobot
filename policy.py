@@ -538,16 +538,32 @@ class Policy:
         """
         general entry of A*
         """
+        condition=robot_state.row,robot_state.col,robot_state.direction,robot_state.speed
+
         if not self.target or not is_goal(house_map,RobotState(self.target[0],self.target[1])):
             self.Calibrate_target(house_map)
         if self.A_Star==None:
             self.A_Star=A_star(self.target)
             self.A_Star.A_Star_path_init(robot_state)
             self.A_Star.A_Star_path_calculate(house_map)
+            if not self.A_Star.full_path:
+                return Action(-1,0)
             self.A_Star.Policy_generation()
 
+        
+        
+        if not self.A_Star.full_path:
+            self.A_Star.A_Star_path_calculate(house_map)
+            if not self.A_Star.full_path:
+                return Action(-1,0)
+            self.A_Star.Policy_generation()
+            act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
+            if act==None:
+                return Action(-1,0)
+            else:
+                return act
+
         #查询当前状态的policy
-        condition=robot_state.row,robot_state.col,robot_state.direction,robot_state.speed
         act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
 
         #如果没有找到
