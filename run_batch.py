@@ -3,8 +3,8 @@ from policy import Policy
 
 from run_once import run_once
 
-TASK_NUM = 10
-MAP_NAME = 'Wiconisco'
+TASK_NUM = 300
+MAP_NAME = 'Markleeville'
 if __name__ == "__main__":
 
     # and example for how to run TASK_NUM tasks in one map in headless mode and store the data
