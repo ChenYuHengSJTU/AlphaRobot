@@ -260,10 +260,13 @@ class A_star:
         c=0
         if direction!=None:
             offsets=DIR_OFFSET[direction]
-            offsets_to_goal=pos_or_neg(position[0]-self.target[0]),pos_or_neg(position[1]-self.target[1])
-            if offsets[0]!=offsets_to_goal[0] and offsets[1]!=offsets_to_goal[1]:
+            offsets_to_goal=pos_or_neg(self.target[0]-position[0]),pos_or_neg(self.target[1]-position[1])
+            if offsets[0]!=offsets_to_goal[0]:
                 #如果当前朝向远离goal，增加一个punishment
-                c=1
+                c+=1
+            if offsets[1]!=offsets_to_goal[1]:
+                #如果当前朝向远离goal，增加一个punishment
+                c+=1
 
         a,b=abs(position[0]-self.target[0]),abs(position[1]-self.target[1])
         return line_cost(a)+line_cost(b)+c
@@ -370,7 +373,7 @@ class A_star:
                 
                 new_condition=(new_row,new_col,crr[4])
                 if self.anc.get(new_condition,-1)!=-1:
-                    break
+                    continue
 
                 new_cost=crr[5]+line_cost(i)+1
                 new_h_0=self.Heuristic(new_pos,(crr[4]+1)%4)
@@ -525,8 +528,6 @@ class Policy:
         """
         find the goal and save in self.target
         """
-        if self.target!=None:
-            return
         for i in range(100):
             for j in range(100):
                 if is_goal(house_map,RobotState(i,j)):
@@ -537,8 +538,9 @@ class Policy:
         """
         general entry of A*
         """
-        if self.A_Star==None:
+        if not self.target or not is_goal(house_map,RobotState(self.target[0],self.target[1])):
             self.Calibrate_target(house_map)
+        if self.A_Star==None:
             self.A_Star=A_star(self.target)
             self.A_Star.A_Star_path_init(robot_state)
             self.A_Star.A_Star_path_calculate(house_map)
