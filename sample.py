@@ -4,14 +4,14 @@ import math,heapq
 import numpy
 import time
 
-
+from run_once import run_once
 
 import random
 
 ####### pre-defined const
 
 #### a const to decide whether to print detailed debug information
-DEBUG=True
+DEBUG=False
 
 
 
@@ -26,6 +26,8 @@ A_TIME_LIMIT=1      #A* time action limit
 COST_LINE=(0,2,3,4,4,5,5,6,6,6)  
 DIR_OFFSET=((0,-1),(-1,0),(0,1),(1,0))      #定义不同方向的行为，每次运动会导致 (row,col)+=DIR_OFFSET[direction]
                                             #**请统一使用这一标准，并使用这个常量变换offset和direction**
+
+####################################################################################################
 
 ####################################################################################################
 # help function
@@ -170,8 +172,6 @@ class timer:
     
     def remaining(self)->float:
         return self.time_limit-(time.perf_counter()-self.start_time)
-    
-    
 
 
 ###############
@@ -384,7 +384,7 @@ class A_star:
 ##############################################################################################################################
 
 class Policy:
-    def __init__(self) -> None:
+    def __init__(self, noise_ratio) -> None:
         self.target=None
         self.A_Star=None
         #err rate check使用
@@ -392,7 +392,7 @@ class Policy:
         self.simul_step_count=0     #获取Action总次数
         self.simul_err_count=0      #出现噪声的次数
 
-
+        self.noise_ratio = noise_ratio
 
     def __del__(self):
         print("[del]: policy istance deleted")
@@ -509,7 +509,56 @@ class Policy:
             return Action(rlt,0)
 
 
-    
+        
+    def Sample_Noise(self, action, state):
+        # 对最优的策略加入噪声
+        # 噪声概率为 self.noise_ratio
+        
+        noise_action = action
+        
+        if random.random() < self.noise_ratio:
+            # 随机选择角度 / 速度
+            # 根据速度进行选择
+            selected = True 
+            while selected:
+            # 向左 / 向右 / 加速 / 减速
+                # global noise_action
+                rand = random.randint(0, 3)
+                # match random.randint(0, 3):
+                if rand == 0:
+                    # case 0:
+                    if state.speed != 0:
+                        continue
+                    noise_action = Action(acc=0, rot=-1)
+                    selected = False
+                    # case 1:
+                elif rand == 1:  
+                    if state.speed != 0:
+                        continue
+                    noise_action = Action(acc=0, rot=1)
+                    selected = False
+                    # case 2:
+                elif rand == 2:
+                    if state.speed >= 2:
+                        continue
+                    noise_action = Action(acc=1, rot=0)
+                    selected = False
+                    # case 3:
+                elif rand == 3:
+                    if state.speed <= 0:
+                        continue
+                    noise_action = Action(acc=-1, rot=0)
+                    selected = False
+                    
+                else:
+                    raise Exception("random.randint(0, 3) error")
+            
+            # random_action = random.choice([(0, 1), (0, -1)])
+            # noise_action = Action(acc=random_action[0], rot=random_action[1])
+
+        return noise_action        
+        pass
+
     
     def A_Star_entry(self,house_map,robot_state:RobotState)->Action:
         """
@@ -526,7 +575,8 @@ class Policy:
         condition=robot_state.row,robot_state.col,robot_state.speed,robot_state.direction
         act=self.get_Action_from_policy(robot_state,condition,self.A_Star.policy)
 
-
+        # 加入噪声
+        act = self.Sample_Noise(act, robot_state)
 
         #如果没有找到
         if act==None:
@@ -559,6 +609,8 @@ class Policy:
 
     def RL_Learning(self,house_map,robot_state):
         pass
+    
+
     
 
 
@@ -630,3 +682,50 @@ class Policy:
             
         return next_state 
 
+
+if __name__ == '__main__':
+    print("begin sampling")
+    
+    # sampler = Policy(0.1)
+    
+    SAMPLES = 10000
+    MAP_NAME = 'Wiconisco'
+    
+    current_directory = os.path.dirname(__file__)
+    map_file_path = os.path.join(
+        current_directory, "grid_maps",MAP_NAME,"occ_grid_small.txt")
+
+    store_path = os.path.join(current_directory, "replay_data/samples/")
+
+    for i in range(SAMPLES):
+        policy = Policy(0.6)
+        run_once(map_file_path=map_file_path,
+                policy=policy,
+                store=True,
+                store_path=store_path,
+                headless=False,
+                idx=i)
+        
+        if i % 20 == 0:
+            print(f"\033[33mSample {i+1} finished.\033[0m")
+    
+
+    for i in range(SAMPLES):
+        policy = Policy(0)
+        run_once(map_file_path=map_file_path,
+                policy=policy,
+                store=True,
+                store_path=store_path,
+                headless=False,
+                idx=i + SAMPLES)
+
+        if i % 20 == 0:
+            print(f"\033[33mSample {i+1+SAMPLES} finished.\033[0m")
+    
+    # for i in range(TASK_NUM):
+        # print("run task", i+1)
+        # run_once(map_file_path=map_file_path,
+                #  policy=policy,
+                #  store=True,
+                #  store_path=store_path,
+                #  headless=False)

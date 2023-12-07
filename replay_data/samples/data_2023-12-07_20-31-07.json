@@ -1,0 +1,1 @@
+{"map_file_path": "grid_maps/Wiconisco/occ_grid_small.txt", "start_pos": [42, 42], "goal_pos": [83, 19], "robot_rows": [42, 42, 43, 44], "robot_cols": [42, 42, 42, 42], "robot_speeds": [0, 0, 1, 1], "robot_directions": [0, 3, 3, 3], "action_accs": [0, 1, 0], "action_rots": [-1, 0, 1], "steps": 3, "is_goal": false}

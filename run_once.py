@@ -10,7 +10,7 @@ import warnings
 
 MAP_NAME="Wiconisco"
 
-def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, store_path="~/", step_limit=1000, time_limit=1.0, headless=False):
+def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, store_path="~/", step_limit=1000, time_limit=1.0, headless=False, idx=0):
     """
     Run a navigation task once.
 
@@ -77,7 +77,7 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
         if not os.path.exists(store_path):
             os.makedirs(store_path)
 
-        json_file_path = os.path.join(store_path, f'data_{current_time}.json')
+        json_file_path = os.path.join(store_path, f'data_{idx}.json')
         
         robot_rows.append(int(robot_state.row))
         robot_cols.append(int(robot_state.col))
@@ -147,9 +147,11 @@ if __name__ == "__main__":
 
     store_path = os.path.join(current_directory, "replay_data")
 
-    policy = Policy()
 
-    run_once(map_file_path=map_file_path,
-             policy=policy,
-             store=True,
-             store_path=store_path)
+
+    for i in range(10):
+        policy = Policy()
+        run_once(map_file_path=map_file_path,
+                policy=policy,
+                store=True,
+                store_path=store_path)

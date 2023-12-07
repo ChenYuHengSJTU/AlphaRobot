@@ -22,4 +22,4 @@ if __name__ == "__main__":
                  policy=policy,
                  store=True,
                  store_path=store_path,
-                 headless=True)
+                 headless=False)
