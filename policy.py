@@ -544,6 +544,7 @@ class Policy:
             self.Calibrate_target(house_map)
         if self.A_Star==None:
             self.A_Star=A_star(self.target)
+            self.A_Star.timer.start()
             self.A_Star.A_Star_path_init(robot_state)
             self.A_Star.A_Star_path_calculate(house_map)
             if not self.A_Star.full_path:
@@ -553,6 +554,7 @@ class Policy:
         
         
         if not self.A_Star.full_path:
+            self.A_Star.timer.start()
             self.A_Star.A_Star_path_calculate(house_map)
             if not self.A_Star.full_path:
                 return Action(-1,0)
@@ -572,6 +574,7 @@ class Policy:
                 print("\t[debug]: \t\tunexpected condition!")
             #初始化A*并计算，生成policy，返回减速指令
             self.A_Star=A_star(self.target)
+            self.A_Star.timer.start()
             self.A_Star.A_Star_path_init(robot_state)
             self.A_Star.A_Star_path_calculate(house_map)
             self.A_Star.Policy_generation()
