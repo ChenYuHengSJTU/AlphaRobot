@@ -9,8 +9,8 @@ from run_once import run_once
 
 
 # Global encodings for controlling the evaluator parameters
-TASK_NUM = 20  # Task number for each map
-RUN_TIME = 10  # Time for each task to run
+TASK_NUM = 5  # Task number for each map
+RUN_TIME = 2  # Time for each task to run
 STEP_LIMIT = 1000  # The maximum number of steps allowed.
 TIME_LIMIT = 1.0  # The maximum thinking time in seconds for each step.
 

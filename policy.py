@@ -17,7 +17,7 @@ DEBUG=True
 
 #### seting the time restriction in computation, None for unlimited
 ## A*'s is under 2 limitation(A_TIME_LIMIT is preferred, although it limit actual time, not cpu time)
-A_TIME_LIMIT=1      #A* time action limit
+A_TIME_LIMIT=0.95      #A* time action limit
 
 
 
@@ -162,7 +162,7 @@ def get_Action_from_policy(robot_state:RobotState,condition:(int,int,int,int),po
         return None
     if rlt>=10:
         #turn
-        rlt-=10+robot_state.direction
+        rlt-=(10+robot_state.direction)
         if rlt>=2:
             rlt=-1
         if rlt<=-2:
@@ -318,11 +318,22 @@ class A_star:
         a caluculation function for A*, can halt with time limit
         """
         #start timer
-        self.timer.start()
+        # self.timer.start()
 
         rout=[]
         process_count=0
         while True:
+            #确认是否超过time上限
+            if A_TIME_LIMIT and self.timer.check()>A_TIME_LIMIT:
+                self.full_path=False
+                # rout.append(self.target)
+                # rout.append(crr[6])
+                if DEBUG:
+                    print("\t[A*]: \ttime limit reached!")
+                    print(f"\t[A*]: \tprocessed {process_count} item")
+                    print(f"\t[A*]: \tprocessed {self.timer.check()} time")
+                return 
+            
             crr=heapq.heappop(self.lib)
             crr_condition=(crr[2],crr[3],crr[4])
             process_count+=1
@@ -342,16 +353,6 @@ class A_star:
                 if DEBUG:
                     print("\t[A*]: \tpop limit reached!")
                 break
-
-            #确认是否超过time上限
-            if A_TIME_LIMIT and self.timer.check()>A_TIME_LIMIT:
-                self.full_path=False
-                rout.append(self.target)
-                rout.append(crr[6])
-                if DEBUG:
-                    print("\t[A*]: \ttime limit reached!")
-                break
-
             
             self.anc[crr_condition]=crr[6]
             
@@ -360,7 +361,7 @@ class A_star:
                 self.full_path=True
                 rout.append((crr[2],crr[3],crr[4]))
                 rout.append(crr[6])
-                self.best_cost=crr[5]
+                self.best_cost=crr[5]-1
                 if DEBUG:
                     print(f"\t[A*]: \t\ttarget found! best step:{self.best_cost}")
                 break
@@ -397,7 +398,7 @@ class A_star:
         使用self.rout生成self.policy
         """
         #重置self.policy
-        self.policy=dict()
+        # self.policy=dict()
         
         if self.rout==None:
             print("A_rout is NULL exiting")
@@ -528,11 +529,14 @@ class Policy:
         """
         find the goal and save in self.target
         """
-        for i in range(100):
-            for j in range(100):
-                if is_goal(house_map,RobotState(i,j)):
-                    self.target=(i,j)
-                    return
+        # for i in range(100):
+        #     for j in range(100):
+        #         if is_goal(house_map,RobotState(i,j)):
+        #             self.target=(i,j)
+        #             return
+        i,j =  np.where(np.array(house_map) == GOAL)
+        self.target = (i[0],j[0])
+        return 
     
     def A_Star_entry(self,house_map,robot_state:RobotState)->Action:
         """
@@ -542,6 +546,7 @@ class Policy:
 
         if not self.target or not is_goal(house_map,RobotState(self.target[0],self.target[1])):
             self.Calibrate_target(house_map)
+            self.A_Star=None
         if self.A_Star==None:
             self.A_Star=A_star(self.target)
             self.A_Star.timer.start()
@@ -549,7 +554,7 @@ class Policy:
             self.A_Star.A_Star_path_calculate(house_map)
             if not self.A_Star.full_path:
                 return Action(-1,0)
-            self.A_Star.Policy_generation()
+            self.A_Star.Policy_generation() # 根据rout更新policy
 
         
         
@@ -573,12 +578,14 @@ class Policy:
             if DEBUG:
                 print("\t[debug]: \t\tunexpected condition!")
             #初始化A*并计算，生成policy，返回减速指令
-            self.A_Star=A_star(self.target)
+            # self.A_Star=A_star(self.target)
             self.A_Star.timer.start()
             self.A_Star.A_Star_path_init(robot_state)
             self.A_Star.A_Star_path_calculate(house_map)
+            if not self.A_Star.full_path:
+                return Action(-1,0)
             self.A_Star.Policy_generation()
-            return Action(-1,0)
+            # return Action(-1,0)
             act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
             
         #正常情况，直接返回act（不是None）
