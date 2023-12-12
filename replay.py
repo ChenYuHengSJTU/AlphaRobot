@@ -4,7 +4,7 @@ import pygame
 import time
 import os
 import argparse
-# Global constants for the environment
+
 EMPTY = 0         # Represents an empty space on the map
 OBSTACLE = 1      # Represents an obstacle on the map
 START = 2         # Represents the starting position on the map
@@ -16,9 +16,6 @@ ROBOT_SIZE = 2    # Represents the size of the robot (e.g., 2x2 grid)
 def replay(data_file_path):
     """
     Replay the stored data.
-
-    Parameters:
-        data_file_path: The file path to the stored json data.
     """
 
     with open(data_file_path, 'r') as json_file:

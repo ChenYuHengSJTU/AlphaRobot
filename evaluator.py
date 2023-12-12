@@ -8,11 +8,10 @@ from grid_map_env.utils import sample_start_and_goal
 from run_once import run_once
 
 
-# Global encodings for controlling the evaluator parameters
-TASK_NUM = 20  # Task number for each map
-RUN_TIME = 10  # Time for each task to run
-STEP_LIMIT = 1000  # The maximum number of steps allowed.
-TIME_LIMIT = 1.0  # The maximum thinking time in seconds for each step.
+TASK_NUM = 20  # The number of tasks for each map
+RUN_TIME = 10  # The number of times to run each task
+STEP_LIMIT = 1000  # The maximum number of steps allowed for each run
+TIME_LIMIT = 1.0  # The maximum thinking time in seconds for each step
 
 
 def get_score(results):
@@ -71,7 +70,6 @@ if __name__ == "__main__":
 
     total_reward = 0
 
-    policy = Policy()
 
 
     results = []
@@ -90,6 +88,8 @@ if __name__ == "__main__":
             print("optimal step number:", optimal_steps)
 
             for j in range(RUN_TIME):
+
+                policy = Policy()
 
                 is_goal, steps = run_once(
                     map_file_path=map_file_path,

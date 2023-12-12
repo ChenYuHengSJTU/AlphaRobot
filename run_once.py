@@ -8,9 +8,11 @@ import json
 import gym
 import warnings
 
+from stable_baselines3 import A2C
+
 MAP_NAME="Wiconisco"
 
-def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, store_path="~/", step_limit=1000, time_limit=1.0, headless=False, idx=0):
+def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, store_path="~/", step_limit=1000, time_limit=None, headless=False, idx=0):
     """
     Run a navigation task once.
 
@@ -44,13 +46,29 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
     if start_pos == None or goal_pos == None:
         start_pos, goal_pos = sample_start_and_goal(map_file_path)
 
+    start_pos = (10,10)
+    goal_pos = (10,10)
     warnings.filterwarnings("ignore", category=UserWarning, module="gym")
 
     env = gym.make("grid_map_env/GridMapEnv-v0", n=100,
                    map_file_path=map_file_path, start_pos=start_pos, goal_pos=goal_pos, headless=headless)
 
+    print(env.observation_space)
+
+    
+
+    # a2c = A2C()    
+    # a2c = A2C("MultiInputPolicy", env, device="cpu")
+
+    # print(a2c)
+
+
     initial_observation, _ = env.reset()
 
+    print(initial_observation['map'])
+    # print(initial_observation.shape)
+    # print(type(initial_observation))
+    
     map = initial_observation["map"]
 
     robot_state = RobotState(row=initial_observation["robot_pos"][0], col=initial_observation["robot_pos"]
@@ -149,9 +167,11 @@ if __name__ == "__main__":
 
 
 
-    for i in range(10):
+    for i in range(1):
         policy = Policy()
         run_once(map_file_path=map_file_path,
                 policy=policy,
                 store=True,
-                store_path=store_path)
+                store_path=store_path,
+                headless=True
+                )
