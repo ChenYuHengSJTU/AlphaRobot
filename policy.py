@@ -3,6 +3,7 @@ from grid_map_env.utils import *
 import math,heapq
 import numpy
 import time
+import copy
 
 
 
@@ -60,6 +61,13 @@ def acc_dacc(v:int,l:int)->int:
     Return:
         (int): 1:加速, 0:保持, -1:减速
     """
+
+    """
+    Note!
+    if v==3 and we wanna acc=0:
+        we set acc=1 to avoid the noise.
+    Improvement to be done...
+    """
     #一个阶梯函数的实现
     acc=0
     if l>=6:
@@ -73,6 +81,11 @@ def acc_dacc(v:int,l:int)->int:
         acc=-1
     if acc>1:
         acc=1
+    """
+    An improvement
+    """
+    if acc == 0 and v == 3:
+        acc = 1
     return acc
     
 
@@ -241,6 +254,7 @@ class A_star:
                                 #最后一个编码为 (goal_row,goal_col)
         self.full_path=False  #A*，是否找到了最优到goal的路径（是否被limit打断导致A*未完全跑完）
         self.lib=[]           #A*，用于储存fringe的最小堆，编码方式见函数内说明
+        self.anc=dict() 
         self.start_condition=None     #A*，记录本轮A*初始化的出发
         self.timer=timer(A_TIME_LIMIT)    #A*，用于检测限定时间是否用尽
         self.best_cost=-1             #A*，记录找到最优路径在无干扰情况下最少的步数
