@@ -4,6 +4,7 @@ import math,heapq
 import numpy
 import time
 import copy
+import json
 
 
 
@@ -13,6 +14,7 @@ import random
 
 #### a const to decide whether to print detailed debug information
 DEBUG=True
+MCTS = True
 
 
 
@@ -447,6 +449,176 @@ class A_star:
                     condition=row,col,desired_direction,v
                     #对路径上的所有点，朝向正确的方向，计算加减速操作
                     self.policy[condition]=acc_dacc(v,rest)
+
+    def MCT_Policy_generation(self, mct_dict, house_map)->None:
+        """
+        使用self.rout生成self.policy
+        """
+        #重置self.policy
+        # self.policy=dict()
+        
+        if self.rout==None:
+            print("A_rout is NULL exiting")
+            raise "A_rout is NULL"
+
+        for i,node in enumerate(self.rout):
+            if i==len(self.rout)-1:
+                break
+            #解包self.rout
+            next_node=self.rout[i+1]
+            desired_direction=node[2]
+            row_offset,col_offset=DIR_OFFSET[desired_direction]
+
+            situation = -1
+            args = [1,1,1]
+
+            if next_node[0] != node[0] or next_node[1] != node[1]:
+                next2_node = None
+                next3_node = None
+                if i + 2 < len(self.rout):
+                    next2_node = self.rout[i + 2]
+                if i + 3 < len(self.rout):
+                    next3_node = self.rout[i + 3]
+
+                if next2_node is None:
+                    situation = 0
+                    row_o, col_o = DIR_OFFSET[node[2]]
+                    args[0] = 5
+                    for i in range(1,5):
+                        if not Space_check(house_map, (next_node[0]+row_o*i,next_node[1]+col_o*i)):
+                            args[0] = i
+                            break
+
+                else:
+                    situation = 1
+                    row_o, col_o = DIR_OFFSET[next_node[2]]
+                    args[0] = 5
+                    for i in range(1,5):
+                        if not Space_check(house_map, (next2_node[0]+row_o*i,next2_node[1]+col_o*i)):
+                            args[0] = i
+                            break
+
+                    args[1] = 4
+                    args[2] = 4
+
+                    for i in range(1,4):
+                        row1 = next_node[0]-i*row_offset
+                        col1 = next_node[1]-i*col_offset
+
+                        row2 = next2_node[0]-i*row_offset
+                        col2 = next2_node[1]-i*col_offset
+
+                        flag = False
+    
+                        if row1 == row2 and col1 != col2:
+                            step = 1
+                            if col1 > col2:
+                                step=-1
+                            for col in range(col1, col2, step):
+                                if not Space_check(house_map, (row1, col)):
+                                    args[1] = i
+                                    flag = True
+                                    break
+                        elif col1 == col2 and row1 != row2:
+                            step = 1
+                            if row1 > row2:
+                                step = -1
+                            for row in range(row1, row2, step):
+                                if not Space_check(house_map, (row, col1)):
+                                    args[1] = i
+                                    flag = True
+                                    break
+                        else:
+                            assert 1 == 0
+
+                        if flag:
+                            break
+
+                    for i in range(1,4):
+                        row1 = next_node[0]+i*row_offset
+                        col1 = next_node[1]+i*col_offset
+
+                        row2 = next2_node[0]+i*row_offset
+                        col2 = next2_node[1]+i*col_offset
+
+                        flag = False
+    
+                        if row1 == row2 and col1 != col2:
+                            step = 1
+                            if col1 > col2:
+                                step=-1
+                            for col in range(col1, col2, step):
+                                if not Space_check(house_map, (row1, col)):
+                                    args[2] = i
+                                    flag = True
+                                    break
+                        elif col1 == col2 and row1 != row2:
+                            step = 1
+                            if row1 > row2:
+                                step = -1
+                            for row in range(row1, row2, step):
+                                if not Space_check(house_map, (row, col1)):
+                                    args[2] = i
+                                    flag = True
+                                    break
+                        else:
+                            assert 2 == 0
+
+                        if flag:
+                            break
+
+                if next2_node is not None and next3_node is not None:
+                    expect_dir = DIR_OFFSET[desired_direction]
+                    a = next3_node[0]-next2_node[0]
+                    b = next3_node[1]-next2_node[1]
+                    next_direction = (pos_or_neg(a), pos_or_neg(b))
+                    if next_direction == expect_dir:
+                        situation = 2
+                    elif (-next_direction[0], -next_direction[1]) == expect_dir:
+                        situation = 3
+                    else:
+                        assert 3 == 0
+
+            for dir in range(4):
+                if dir==desired_direction:
+                    continue
+                condition=node[0],node[1],dir,0
+                #对于出发点，对全部方向，速度为0，设置为需要的方向
+                self.policy[condition]=desired_direction+10
+
+            totallen=row_offset*(next_node[0]-node[0])+col_offset*(next_node[1]-node[1])
+
+            for j in range(totallen+1):
+                rest=totallen-j
+                row=node[0]+j*row_offset
+                col=node[1]+j*col_offset
+                for v in range(4):
+                    if j==totallen and v==0:
+                        #跳过终点速度为0
+                        continue
+                    condition=row,col,desired_direction,v
+                    #对路径上的所有点，朝向正确的方向，计算加减速操作
+                    
+                    self.policy[condition]=self.acc_mcts(mct_dict, v, rest, situation, args)
+
+    
+    def acc_mcts(self, mct_dict, v, rest, situation, args):
+        """
+        Argv:
+            v(int): 速度
+            l(int): 剩余距离
+            condition(int): 拐弯点离墙的距离
+        """
+        if situation == -1:
+            return -1
+        if rest >= 9:
+            return 1
+        
+        res = mct_dict[(rest, v, situation, tuple(args))]
+        if res == None:
+            assert 5 == 0, "mcts error"
+        return res
+        
       
 class A_star_expect:
     def __init__(self,target) -> None:
@@ -489,6 +661,13 @@ class Policy:
         self.simul_step_count=0     #获取Action总次数
         self.simul_err_count=0      #出现噪声的次数
 
+        self.mcts_policy = {}
+
+        with open("MCTS-v0.json", "r") as mcts_file:
+            self.mcts_temp = json.load(mcts_file)
+        
+        self.check_mcts()
+
     def __del__(self):
         print("[del]: policy istance deleted")
         if DEBUG and self.simul_step_count!=0:
@@ -496,6 +675,13 @@ class Policy:
             print(f"[err rate]: one round err rate:{err_rate}")
             # with open("err rate.txt","a") as f:
             #     f.write(f"{err_rate}\n")
+
+    def check_mcts(self):
+        for key, value in self.mcts_temp.items():
+            distance, speed, condition, i,j,k = key.split('_')
+            self.mcts_policy[int(distance),int(speed),int(condition),(int(i), int(j), int(k))] = int(value)
+
+        assert len(self.mcts_policy) == 11200
 
     def bounce(self,house_map,robot_state:RobotState)->Action:
         """
@@ -570,8 +756,6 @@ class Policy:
                 return Action(-1,0)
             self.A_Star.Policy_generation() # 根据rout更新policy
 
-        
-        
         if not self.A_Star.full_path:
             self.A_Star.timer.start()
             self.A_Star.A_Star_path_calculate(house_map)
@@ -603,6 +787,8 @@ class Policy:
             act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
             
         #正常情况，直接返回act（不是None）
+        if act == None :
+            assert 4 == 0
         return act
         
 
@@ -611,7 +797,58 @@ class Policy:
         pass
 
     def MCT_search(self,house_map,robot_state):
-        pass
+        """
+        general entry of A* + MCTS
+        """
+        condition=robot_state.row,robot_state.col,robot_state.direction,robot_state.speed
+
+        if not self.target or not is_goal(house_map,RobotState(self.target[0],self.target[1])):
+            self.Calibrate_target(house_map)
+            self.A_Star=None
+        if self.A_Star==None:
+            self.A_Star=A_star(self.target)
+            self.A_Star.timer.start()
+            self.A_Star.A_Star_path_init(robot_state)
+            self.A_Star.A_Star_path_calculate(house_map)
+            if not self.A_Star.full_path:
+                return Action(-1,0)
+            self.A_Star.MCT_Policy_generation(self.mcts_policy, house_map) # 根据rout更新policy
+
+        if not self.A_Star.full_path:
+            self.A_Star.timer.start()
+            self.A_Star.A_Star_path_calculate(house_map)
+            if not self.A_Star.full_path:
+                return Action(-1,0)
+            self.A_Star.MCT_Policy_generation(self.mcts_policy, house_map)
+            act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
+            if act==None:
+                return Action(-1,0)
+            else:
+                return act
+
+        #查询当前状态的policy
+        act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
+
+        #如果没有找到
+        if act==None:
+            if DEBUG:
+                print("\t[debug]: \t\tunexpected condition!")
+            #初始化A*并计算，生成policy，返回减速指令
+            # self.A_Star=A_star(self.target)
+            self.A_Star.timer.start()
+            self.A_Star.A_Star_path_init(robot_state)
+            self.A_Star.A_Star_path_calculate(house_map)
+            if not self.A_Star.full_path:
+                return Action(-1,0)
+            self.A_Star.MCT_Policy_generation(self.mcts_policy, house_map)
+            # return Action(-1,0)
+            act=get_Action_from_policy(robot_state,condition,self.A_Star.policy)
+            
+        #正常情况，直接返回act（不是None）
+        if act == None :
+            assert 4 == 0
+        return act
+        
 
     def policy_iter(self,house_map,robot_state):
         pass
@@ -634,6 +871,8 @@ class Policy:
              action (Action): an instance of Action class representing the action for execution.
         '''
         #plz wrap different policy like below
+        if MCTS:
+            return self.check_err_rate(house_map,robot_state,self.MCT_search)
         return self.check_err_rate(house_map,robot_state,self.A_Star_entry)
 
 
@@ -689,4 +928,3 @@ class Policy:
             next_state.direction = (next_state.direction+action.rot) % 4   
             
         return next_state 
-

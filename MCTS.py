@@ -15,7 +15,7 @@ import time
 
 MAP_NAME="Wiconisco" # "Markleeville"
 
-DEBUG = True
+DEBUG = False
 
 """
 (20, 4)
@@ -34,15 +34,15 @@ class MCTS():
         1. -------\/
         2. ------
                 |
-                |
+            1   |   2
                 \/
         3. ------
                 |
-                |
+            1   |   2
                 ------->
         4. ------
                 |
-                |
+            1   |   2
            <-----
         args: tuple(bounce, bounder1, bounder2)
         bouce include(1,2,3,>=4)
@@ -152,6 +152,7 @@ class MCTS():
         Given a real node
         return a chance node
         """
+        # 可以选择在中间点停，但是不能选择在起点停。
         if Node == (self.init_distance, self.init_speed) and self.init_speed == 0:
             return (Node[0], Node[1], 1)
         
@@ -258,22 +259,54 @@ class MCTS():
                 bias = self.rvse + 10
             return self.min_cost[abs(distance)] + bias # averaged bias
         if distance > 0:
-            if distance < 6:
-                return self.min_cost[distance]
-            else:
-                return 2*distance
-         
+            return self.min_cost[distance]
+
 
     def con_1(self, distance):
-        pass
+        if distance == 0:
+            return 0
+        if  distance <0 :
+            if args[2] + distance <= 0:
+                return self.rvse + self.min_cost[abs(distance)]
+            else:
+                return self.rvse // 2 + self.min_cost[abs(distance)]
+        if distance > 0:
+            return self.min_cost[abs(distance)]
 
     def con_2(self, distance):
-        pass
-
+        if distance == 0:
+            return 0
+        if distance < 0:
+            if args[2] + distance <= 0:
+                return self.rvse + self.min_cost[abs(distance+args[2]-1)] -1
+            else:
+                return -0.6
+        if distance > 0:
+            if distance - args[1] >= 0:
+                return  self.min_cost[abs(distance)]
+            else:
+                return 1
+            
     def con_3(self, distance):
+        if distance == 0:
+            return 0
+        if distance < 0:
+            if args[2] + distance <= 0:
+                return self.rvse + self.min_cost[abs(distance)]
+            else:
+                return 1
+        if distance > 0:
+            if distance - args[1] >= 0:
+                return self.min_cost[abs(distance)]
+            else:
+                return -1
+
+    def con_actual(self, distance):
         pass
 
     def cal_util(self, distance):
+        # return self.con_actual(distance)
+
         if self.condition == 0:
             return self.con_0(distance)
         elif self.condition == 1:
@@ -303,8 +336,8 @@ class MCTS():
         for i in range(self.iterations):
             # ini, _ = self.env.reset()
             # assert ini["robot_speed"] == 0
-            if i % 1 == 0:
-                print("\tIter:", i)
+            # if i % 1 == 0:
+            #     print("\tIter:", i)
             state = self.select_and_expand()
             steps, distance = self.rollout(state)
             steps += self.cal_util(distance)
@@ -336,41 +369,110 @@ if __name__ == "__main__":
 
     warnings.filterwarnings("ignore", category=UserWarning, module="gym")
 
+    # mytimer = timer(0.5)
+    # mytimer.start()
+    # print(mytimer.check())
+
+    # init_distance = 0 
+    # init_speed = 1
+
+    res_dict = {}
+
     start_pos = (20, 20)
-    init_distance = 3
-    init_speed = 3
 
-    condition = 0
+    for condition in range(4):
+        args = None
+        for i in range(1,6):
+            for j in range(1,5):
+                for k in range(1,5):
+                    args=(i,j,k)
+                    if i == 5:
+                        args = (8,j,k)
+                    for ini_distance in range(9): 
+                        for ini_speed in range(4):
+                            if ini_distance == 0 and ini_speed == 0:
+                                continue
+                            mcts = MCTS(map_file_path=map_file_path,
+                                        iterations=1000,
+                                        start_pos=start_pos, 
+                                        init_distance=ini_distance,
+                                        init_speed=ini_speed, 
+                                        condition=condition, 
+                                        args=args)    
+                            
+                            mcts.begin_search()
 
-    args = (1, 0, 0) # from 1 to 4
+                            if args[0] == 8:
+                                args = (5,args[1],args[2])
 
-    mcts = MCTS(map_file_path=map_file_path,
-                iterations=1000,
-                start_pos=start_pos, 
-                init_distance=init_distance,
-                init_speed=init_speed, 
-                condition=condition, 
-                args=args)    
-    mytimer = timer(0.5)
-    mytimer.start()
-    mcts.begin_search()
-    print(mytimer.check())
+                            acc_de = mcts.MCTree[(ini_distance, ini_speed, -1)][0]
+                            acc_ke = mcts.MCTree[(ini_distance, ini_speed, 0)][0]
+                            acc_ac = mcts.MCTree[(ini_distance, ini_speed, 1)][0]
+
+                            if acc_ac >= acc_de and acc_ac >= acc_ke:
+                                res_dict[(ini_distance, ini_speed, condition, args)] = 1
+                            if acc_ke >= acc_de and acc_ke >= acc_ac:
+                                res_dict[(ini_distance, ini_speed, condition, args)] = 0
+                            if acc_de >= acc_ke and acc_de >= acc_ac:
+                                res_dict[(ini_distance, ini_speed, condition, args)] = -1
+                            
+                    
+                    # for key, items in res_dict.items():
+                    #     print(key, items)
+                    
+        print("This condition and args Done")            # assert 0
+    print(len(res_dict))
+    another_copy = {}
+    with open("MCTS-v0.csv", "w") as output_file, open("MCTS-v0.json", "w") as out_json:
+        output_file.write("distance,speed,conditon,args_0,args_1,args_2,Action\n")
+        for key, items in res_dict.items():
+            # print(key, items)
+            output_file.write(str(key[0])+ ' ' \
+                              +str(key[1])+ ' ' \
+                              +str(key[2])+ ' ' \
+                              +str(key[3][0])+ ' ' \
+                              +str(key[3][1])+ ' ' \
+                              +str(key[3][2])+ ' ' \
+                              +str(items) + "\n")
+            # another_copy.pop(key)
+            another_copy[str(key[0])+ '_' \
+                              +str(key[1])+ '_' \
+                              +str(key[2])+ '_' \
+                              +str(key[3][0])+ '_' \
+                              +str(key[3][1])+ '_' \
+                              +str(key[3][2])] = items
+        
+        json.dump(another_copy, out_json)
+
+    # condition = 0 # from 0 to 3
+    # args = (1, 0, 0) # from 1 to 4
+
+    # mcts = MCTS(map_file_path=map_file_path,
+    #             iterations=1000,
+    #             start_pos=start_pos, 
+    #             init_distance=init_distance,
+    #             init_speed=init_speed, 
+    #             condition=condition, 
+    #             args=args)    
+    
+    # mcts.begin_search()
+    
 
     # mcts.env.close()
 
-    search_result = mcts.MCTree
+    # search_result = mcts.MCTree
 
-    print(len(search_result))
+    # print(len(search_result))
 
-    with open("mcts_res_"+str(condition)+"_di"+str(init_distance)\
-              +"_sp"+str(init_speed) +".csv", 'w') as output_file:
-        output_file.write("distance,speed,acc,num,util,avg_util\n")
+    # with open("mcts_res_con"+str(condition)+"_di"+str(init_distance)\
+    #           +"_sp"+str(init_speed) +".csv", 'w') as output_file:
+    #     output_file.write("distance,speed,acc,num,util,avg_util\n")
 
-        for distance in range(mcts.init_distance+1):
-            for speed in range(4):
-                for acc in (-1,0,1):
-                    if (distance, speed, acc) in search_result:
-                        value = search_result[(distance, speed, acc)]
-                        output_file.write(str(distance) + ', ' +str(speed)+ ', '+str(acc)+ ', '+\
-                                        str(value[0])+ ', '+str(value[1])[:8] + ', '+str(value[1]/value[0])[:8]+'\n')
+    #     for distance in range(mcts.init_distance+1):
+    #         for speed in range(4):
+    #             for acc in (-1,0,1):
+    #                 if (distance, speed, acc) in search_result:
+    #                     value = search_result[(distance, speed, acc)]
+    #                     output_file.write(str(distance) + ', ' +str(speed)+ ', '+str(acc)+ ', '+\
+    #                                     str(value[0])+ ', '+str(value[1])[:8] + ', '+str(value[1]/value[0])[:8]+'\n')
 
