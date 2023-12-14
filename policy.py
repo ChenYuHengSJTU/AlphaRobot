@@ -491,10 +491,10 @@ class A_star:
 
                 else:
                     situation = 1
-                    row_o, col_o = DIR_OFFSET[next_node[2]]
+                    row_o, col_o = DIR_OFFSET[node[2]]
                     args[0] = 5
                     for i in range(1,5):
-                        if not Space_check(house_map, (next2_node[0]+row_o*i,next2_node[1]+col_o*i)):
+                        if not Space_check(house_map, (next_node[0]+row_o*i,next_node[1]+col_o*i)):
                             args[0] = i
                             break
 
@@ -593,12 +593,15 @@ class A_star:
                 row=node[0]+j*row_offset
                 col=node[1]+j*col_offset
                 for v in range(4):
+                    if v == 0:
+                        if j != 0:
+                            continue
                     if j==totallen and v==0:
                         #跳过终点速度为0
                         continue
                     condition=row,col,desired_direction,v
                     #对路径上的所有点，朝向正确的方向，计算加减速操作
-                    
+
                     self.policy[condition]=self.acc_mcts(mct_dict, v, rest, situation, args)
 
     
@@ -663,7 +666,7 @@ class Policy:
 
         self.mcts_policy = {}
 
-        with open("MCTS-v0.json", "r") as mcts_file:
+        with open("MCTS-v1.json", "r") as mcts_file:
             self.mcts_temp = json.load(mcts_file)
         
         self.check_mcts()

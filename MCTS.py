@@ -53,7 +53,7 @@ class MCTS():
 
         # self.total_node = 0
         self.rvse = 2.2 # turn around
-        self.min_cost = (0, 2.78, 4.06, 5.41, 5.7, 20, 20, 20, 20, 20, 30, 30, 40) # (0,2,3,4,4,5,5,6,6,6)
+        self.min_cost = (0, 2.78, 4.06, 5.41, 5.7, 8, 8.5, 10, 10.6, 20, 30, 30, 40) # (0,2,3,4,4,5,5,6,6,6)
         self.factor = 1000
         self.MCTree = {} 
 
@@ -255,11 +255,11 @@ class MCTS():
             bias = 0
             if distance in [-1, -2, -3]:
                 bias = self.rvse
-            elif distance in [-4, -5, -6, -7, -8]:
-                bias = self.rvse + 10
+            elif distance >= -4:
+                bias = self.rvse
             return self.min_cost[abs(distance)] + bias # averaged bias
         if distance > 0:
-            return self.min_cost[distance]
+            return self.min_cost[distance] + 2
 
 
     def con_1(self, distance):
@@ -267,7 +267,7 @@ class MCTS():
             return 0
         if  distance <0 :
             if args[2] + distance <= 0:
-                return self.rvse + self.min_cost[abs(distance)]
+                return self.rvse + self.min_cost[abs(distance)] + 0.2
             else:
                 return self.rvse // 2 + self.min_cost[abs(distance)]
         if distance > 0:
@@ -278,14 +278,14 @@ class MCTS():
             return 0
         if distance < 0:
             if args[2] + distance <= 0:
-                return self.rvse + self.min_cost[abs(distance+args[2]-1)] -1
+                return self.rvse + self.min_cost[abs(distance+args[2]-1)]
             else:
-                return -0.6
+                return -0.2
         if distance > 0:
             if distance - args[1] >= 0:
-                return  self.min_cost[abs(distance)]
+                return  self.min_cost[abs(distance)] + 0.5
             else:
-                return 1
+                return 0.3
             
     def con_3(self, distance):
         if distance == 0:
@@ -373,25 +373,27 @@ if __name__ == "__main__":
     # mytimer.start()
     # print(mytimer.check())
 
-    # init_distance = 0 
-    # init_speed = 1
+    # init_distance = 3 
+    # init_speed = 2
+    # start_pos = (20,20)
 
     res_dict = {}
 
     start_pos = (20, 20)
 
     for condition in range(4):
-        args = None
         for i in range(1,6):
             for j in range(1,5):
                 for k in range(1,5):
-                    args=(i,j,k)
-                    if i == 5:
-                        args = (8,j,k)
                     for ini_distance in range(9): 
                         for ini_speed in range(4):
                             if ini_distance == 0 and ini_speed == 0:
                                 continue
+                            args = None
+                            if i == 5:
+                                args=(9,j,k)
+                            else:
+                                args=(i,j,k)
                             mcts = MCTS(map_file_path=map_file_path,
                                         iterations=1000,
                                         start_pos=start_pos, 
@@ -402,7 +404,7 @@ if __name__ == "__main__":
                             
                             mcts.begin_search()
 
-                            if args[0] == 8:
+                            if args[0] == 9:
                                 args = (5,args[1],args[2])
 
                             acc_de = mcts.MCTree[(ini_distance, ini_speed, -1)][0]
@@ -423,7 +425,7 @@ if __name__ == "__main__":
         print("This condition and args Done")            # assert 0
     print(len(res_dict))
     another_copy = {}
-    with open("MCTS-v0.csv", "w") as output_file, open("MCTS-v0.json", "w") as out_json:
+    with open("MCTS-v1.csv", "w") as output_file, open("MCTS-v1.json", "w") as out_json:
         output_file.write("distance,speed,conditon,args_0,args_1,args_2,Action\n")
         for key, items in res_dict.items():
             # print(key, items)
@@ -445,7 +447,7 @@ if __name__ == "__main__":
         json.dump(another_copy, out_json)
 
     # condition = 0 # from 0 to 3
-    # args = (1, 0, 0) # from 1 to 4
+    # args = (8, 0, 0) # from 1 to 4
 
     # mcts = MCTS(map_file_path=map_file_path,
     #             iterations=1000,
@@ -458,7 +460,7 @@ if __name__ == "__main__":
     # mcts.begin_search()
     
 
-    # mcts.env.close()
+    # # mcts.env.close()
 
     # search_result = mcts.MCTree
 
