@@ -1,0 +1,4 @@
+nohup: 忽略输入
+cuda:0
+19142
+epoch: 0, loss: inf, loss avg: inf, current min loss: inf

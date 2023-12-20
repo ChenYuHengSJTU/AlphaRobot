@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     bs = 64
     
-    learning_rate = 5e-5
+    learning_rate = 1e-5
     
     dataLoader = DataLoader(ReplayBuffer(replay_buffer), batch_size=bs, shuffle=False, 
                             generator=torch.Generator(device='cuda')
@@ -258,7 +258,8 @@ if __name__ == "__main__":
         # 10. 添加可视化
     
         loss_all = 0
-        
+        loss_prev = 0
+
         for state, state_nxt, action, cost in dataLoader:
             
             # print()
@@ -377,9 +378,14 @@ if __name__ == "__main__":
         
         # if e % 10 == 0 and e != 0:
         # print(f"epoch: {e}, loss: {loss_all}")
-        print(f"epoch: {e}, loss: {loss_all}, loss avg: {loss_all / len(replay_buffer)}")
-        torch.save(value_net.state_dict(), model_path) 
         
+        print(f"epoch: {e}, loss: {loss_all}, loss avg: {loss_all / len(replay_buffer)}")
+        
+        if loss_all < loss_prev:
+            torch.save(value_net.state_dict(), model_path) 
+        
+        loss_prev = loss_all
+
         # if e % 5 == 0:
             # 还可以采用其他的更新条件和更新方式
             # target_net.load_state_dict(value_net.state_dict())

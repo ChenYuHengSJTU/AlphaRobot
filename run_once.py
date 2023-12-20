@@ -7,7 +7,10 @@ import datetime
 import json
 import gym
 import warnings
+import time
 
+
+from policy_dqn import PolicyDQN
 from stable_baselines3 import A2C
 
 MAP_NAME="Wiconisco"
@@ -46,14 +49,14 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
     if start_pos == None or goal_pos == None:
         start_pos, goal_pos = sample_start_and_goal(map_file_path)
 
-    start_pos = (10,10)
-    goal_pos = (10,10)
+    # start_pos = (10,10)
+    # goal_pos = (10,10)
     warnings.filterwarnings("ignore", category=UserWarning, module="gym")
 
     env = gym.make("grid_map_env/GridMapEnv-v0", n=100,
                    map_file_path=map_file_path, start_pos=start_pos, goal_pos=goal_pos, headless=headless)
 
-    print(env.observation_space)
+    # print(env.observation_space)
 
     
 
@@ -65,7 +68,7 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
 
     initial_observation, _ = env.reset()
 
-    print(initial_observation['map'])
+    # print(initial_observation['map'])
     # print(initial_observation.shape)
     # print(type(initial_observation))
     
@@ -115,6 +118,9 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
             terminated = True
 
         action = result_list[0]
+        # print(action.acc, action.rot)
+
+        time.sleep(0.5)
 
         observation, curr_steps, terminated, is_goal, _ = env.step(action)
         robot_state.row = observation["robot_pos"][0]
@@ -151,6 +157,7 @@ def run_once(map_file_path, policy, start_pos=None, goal_pos=None, store=False, 
 
         with open(json_file_path, 'w') as json_file:
             json.dump(json_dict, json_file)
+            print(f"save to {json_file_path}")
 
     return is_goal, episode_length
 
@@ -163,15 +170,16 @@ if __name__ == "__main__":
     current_directory = os.path.dirname(__file__)
     map_file_path = os.path.join(current_directory, "grid_maps",MAP_NAME,"occ_grid_small.txt")
 
-    store_path = os.path.join(current_directory, "replay_data")
+    store_path = os.path.join(current_directory, "replay_data/samples/")
 
 
 
     for i in range(1):
-        policy = Policy()
+        # policy = Policy()
+        policy = PolicyDQN(100, 6)
         run_once(map_file_path=map_file_path,
                 policy=policy,
                 store=True,
                 store_path=store_path,
-                headless=True
+                headless=False
                 )
