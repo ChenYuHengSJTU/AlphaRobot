@@ -13,14 +13,14 @@ import random
 ####### pre-defined const
 
 #### a const to decide whether to print detailed debug information
-DEBUG=True
+DEBUG=False
 MCTS = True
 
 
 
 #### seting the time restriction in computation, None for unlimited
 ## A*'s is under 2 limitation(A_TIME_LIMIT is preferred, although it limit actual time, not cpu time)
-A_TIME_LIMIT=0.95      #A* time action limit
+A_TIME_LIMIT=0.9      #A* time action limit
 
 
 
@@ -207,7 +207,7 @@ def simulate_RS(house_map,robot_state:RobotState,action:Action)->RobotState:
         dist=distance_check_RS(house_map,robot_state)
         steps=dist-speed+1
         new_row,new_col=(robot_state.row+row_offset*steps,robot_state.col+col_offset*steps)
-        print("\t[simulate]: bounce")
+        # print("\t[simulate]: bounce")
         return RobotState(new_row,new_col,new_dir,0)
 
         
