@@ -1,5 +1,6 @@
 # Alpha Robot
 ## General
+***The code is using the MCTS based on A\* as the final policy. But there are still bugs to be figured out in the environment(not our developers' faults). The Version-0 environment has wrong utils.py for sampling. The Version-1 environment has wrong \_\_pycache\_\_ in grid_map_env\classes which causes some weird phenomenon. Although the Version-2 fixed the bug in version-1, it also carelessly changes the probability of noise, which is subject to severely affect the MCTS's decisions. So the most correct environment has not been released by TAs, we are expecting the TAs to fix all the bugs then let our model perform at best. <div style="text-align: right;">--Developer Xiaoyang Liu</div>*** 
 
 ### debug开关
 由于python`print`会导致性能损失
