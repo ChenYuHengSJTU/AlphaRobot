@@ -588,13 +588,21 @@ class A_star:
 
             totallen=row_offset*(next_node[0]-node[0])+col_offset*(next_node[1]-node[1])
 
-            for j in range(totallen+1):
+            assert args[0] >= 1
+            temp = 1
+            if args[0] != 5:
+                temp = args[0]
+            for j in range(totallen + temp):
                 rest=totallen-j
                 row=node[0]+j*row_offset
                 col=node[1]+j*col_offset
                 for v in range(4):
                     if v == 0:
                         if j != 0:
+                            continue
+                        else:
+                            cd=row,col,desired_direction,v
+                            self.policy[cd]=1
                             continue
                     if j==totallen and v==0:
                         #跳过终点速度为0
@@ -666,7 +674,7 @@ class Policy:
 
         self.mcts_policy = {}
 
-        with open("MCTS-v1.json", "r") as mcts_file:
+        with open("MCTS-v2.json", "r") as mcts_file:
             self.mcts_temp = json.load(mcts_file)
         
         self.check_mcts()
@@ -684,7 +692,7 @@ class Policy:
             distance, speed, condition, i,j,k = key.split('_')
             self.mcts_policy[int(distance),int(speed),int(condition),(int(i), int(j), int(k))] = int(value)
 
-        assert len(self.mcts_policy) == 11200
+        assert len(self.mcts_policy) == 9792
 
     def bounce(self,house_map,robot_state:RobotState)->Action:
         """
