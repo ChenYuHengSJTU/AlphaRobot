@@ -74,8 +74,9 @@ def sample_start_and_goal(map_file_path):
         map_data = np.array(
             [list(map(float, line.strip().split())) for line in lines])
         map_data = map_data.astype(int)
-
-    connected_components = find_connected_components(map_data)
+        
+    map_data_temp = map_data.copy()
+    connected_components = find_connected_components(map_data_temp)
 
     while (True):
         random_component = random.randint(0, len(connected_components)-1)
